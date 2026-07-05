@@ -10,6 +10,7 @@ const state = loadState();
 let undoStack = [];
 let activeNoteId = state.notes[0]?.id ?? null;
 let focusTimerHandle = null;
+let taskFilter = 'all';
 
 const views = [
   { id: 'dashboard', label: 'Dashboard', icon: icons.dashboard },
@@ -201,7 +202,6 @@ function renderView(){
     const dueToday = state.tasks.filter(t => !t.done && t.due === dataUtils.today()).length;
     const complete = doneCount();
     const focusReady = formatTime(state.timer.remaining);
-    const activeHabits = state.habits.length;
     return `
       <div class="grid cols-3">
         <div class="card"><div class="small">Tasks due today</div><div class="stat"><strong>${dueToday}</strong><span class="pill">Focus list</span></div></div>
@@ -424,9 +424,9 @@ function bindViewEvents(root){
   root.querySelectorAll('[data-task-delete]').forEach(btn => btn.addEventListener('click', () => deleteTask(btn.dataset.taskDelete)));
   root.querySelectorAll('[data-task-edit]').forEach(btn => btn.addEventListener('click', () => editTask(btn.dataset.taskEdit)));
   root.querySelectorAll('[data-note-select]').forEach(btn => btn.addEventListener('click', () => selectNote(btn.dataset.noteSelect)));
-  root.querySelector('[data-note-title]')?.addEventListener('input', saveActiveNote);
-  root.querySelector('[data-note-body]')?.addEventListener('input', saveActiveNote);
-  root.querySelector('[data-save-note]')?.addEventListener('click', saveActiveNote);
+  root.querySelector('[data-note-title]')?.addEventListener('input', () => saveActiveNote(false));
+  root.querySelector('[data-note-body]')?.addEventListener('input', () => saveActiveNote(false));
+  root.querySelector('[data-save-note]')?.addEventListener('click', () => saveActiveNote(true));
   root.querySelector('[data-delete-note]')?.addEventListener('click', deleteActiveNote);
   root.querySelector('[data-new-note]')?.addEventListener('click', addNote);
   root.querySelector('[data-timer-toggle]')?.addEventListener('click', toggleTimer);
@@ -445,8 +445,6 @@ function bindViewEvents(root){
   root.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => { taskFilter = btn.dataset.filter; renderMain(); }));
   root.querySelectorAll('[data-act]').forEach(btn => btn.addEventListener('click', () => handleAction({ currentTarget: btn })));
 }
-
-let taskFilter = 'all';
 
 function filteredTasks(q, limit=999){
   let items = [...state.tasks];
@@ -616,7 +614,7 @@ function selectNote(id){
   renderMain();
 }
 
-function saveActiveNote(){
+function saveActiveNote(refresh = false){
   const note = state.notes.find(n => n.id === activeNoteId);
   if(!note) return;
   const title = document.querySelector('[data-note-title]')?.value ?? note.title;
@@ -625,7 +623,7 @@ function saveActiveNote(){
   note.body = body;
   note.updatedAt = Date.now();
   saveState(state);
-  renderMain();
+  if(refresh) renderMain();
 }
 
 function deleteActiveNote(){
@@ -991,4 +989,3 @@ function escapeHtml(str=''){
 
 function escapeAttr(str=''){ return escapeHtml(str).replace(/'/g,'&#39;'); }
 
-function closeModal(){ document.querySelector('#modal-backdrop')?.classList.remove('open'); document.querySelector('#modal-backdrop')?.setAttribute('aria-hidden','true'); }
