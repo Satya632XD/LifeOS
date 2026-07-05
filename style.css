@@ -476,3 +476,36 @@ canvas.chart{
   .section-head{flex-direction:column}
   .grid.cols-2,.grid.cols-3{grid-template-columns:1fr}
 }
+
+
+.calendar-grid{
+  display:grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap:10px;
+}
+.calendar-day{
+  min-height:92px;
+  text-align:left;
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:10px;
+  background: color-mix(in oklab, var(--panel-soft) 84%, transparent);
+  color:var(--text);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.calendar-day:hover{ transform: translateY(-1px); }
+.calendar-day.muted{ opacity:.55; }
+.calendar-day.active{
+  border-color: color-mix(in oklab, var(--accent) 44%, var(--border));
+  background: color-mix(in oklab, var(--accent) 12%, var(--panel-soft));
+}
+.calendar-count{
+  margin-top:auto;
+  color:var(--muted);
+  font-size:.8rem;
+}
+@media (max-width: 720px){
+  .calendar-grid{grid-template-columns: repeat(2, minmax(0,1fr));}
+}
