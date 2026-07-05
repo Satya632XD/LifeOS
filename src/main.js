@@ -379,6 +379,38 @@ function renderView(){
     `;
   }
 
+
+  if(state.currentView === 'calendar'){
+    return `
+      <div class="grid cols-2">
+        <div class="card">
+          <div class="toolbar" style="justify-content:space-between;align-items:center">
+            <h3 style="margin:0">${monthLabel(calendarAnchor)}</h3>
+            <span class="pill">${calendarSelected}</span>
+          </div>
+          <div style="height:10px"></div>
+          <div class="calendar-grid">
+            ${calendarDays(calendarAnchor).map(day => `
+              <button class="calendar-day ${day.isOther ? 'muted' : ''} ${day.date === calendarSelected ? 'active' : ''}" data-cal-day="${day.date}">
+                <span class="small">${day.label}</span>
+                <strong>${day.number}</strong>
+                <span class="calendar-count">${day.count ? `${day.count} task${day.count > 1 ? 's' : ''}` : ''}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="card">
+          <h3>Selected day</h3>
+          <div class="small">Tasks due on ${calendarSelected}</div>
+          <div style="height:12px"></div>
+          <div class="list">
+            ${tasksForDate(calendarSelected).map(taskCard).join('') || emptyState('No tasks due on this date.')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   if(state.currentView === 'bookmarks'){
     const bookmarks = state.bookmarks.filter(b => !q || [b.title,b.url,b.tag].join(' ').toLowerCase().includes(q));
     return `
