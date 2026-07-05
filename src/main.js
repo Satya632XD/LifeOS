@@ -41,10 +41,16 @@ function autoSave(){
 
 function bindGlobalShortcuts(){
   document.addEventListener('keydown', (e) => {
-    if(e.ctrlKey && e.key.toLowerCase() === 'k'){
+    const key = e.key.toLowerCase();
+    if(e.ctrlKey && key === 'k'){
       e.preventDefault();
-      const q = document.querySelector('[data-search]');
-      q?.focus();
+      openCommandPalette();
+      return;
+    }
+    if(e.ctrlKey && key === 'p'){
+      e.preventDefault();
+      openCommandPalette();
+      return;
     }
     if(e.ctrlKey && /^[1-7]$/.test(e.key)){
       e.preventDefault();
@@ -115,6 +121,7 @@ function render(){
           </div>
           <button class="icon-btn" data-theme-toggle title="Toggle theme">${state.theme === 'dark' ? icons.sun : icons.moon}</button>
           <button class="ghost-btn" data-open-export>Backup</button>
+          <button class="ghost-btn" data-open-palette title="Command palette (Ctrl+K)">Commands</button>
           <button class="primary-btn" data-quick-add>+ Add</button>
         </div>
 
@@ -151,6 +158,7 @@ function wireShellEvents(){
   document.querySelector('[data-search]')?.addEventListener('input', e => setQuery(e.target.value));
   document.querySelector('[data-theme-toggle]')?.addEventListener('click', toggleTheme);
   document.querySelector('[data-open-export]')?.addEventListener('click', openBackupModal);
+  document.querySelector('[data-open-palette]')?.addEventListener('click', openCommandPalette);
   document.querySelector('[data-quick-add]')?.addEventListener('click', quickAdd);
   document.querySelector('[data-close-modal]')?.addEventListener('click', closeModal);
   document.querySelector('#modal-backdrop')?.addEventListener('click', (e) => {
@@ -560,6 +568,58 @@ function quickAdd(){
   }));
 }
 
+
+function openCommandPalette(){
+  const commands = [
+    { title: 'New task', hint: 'Add a task quickly', run: addTask },
+    { title: 'New note', hint: 'Capture a thought', run: addNote },
+    { title: 'New bookmark', hint: 'Save a link', run: addBookmark },
+    { title: 'New habit', hint: 'Track a daily streak', run: addHabit },
+    { title: 'Go to Dashboard', hint: 'Ctrl+1', run: () => setView('dashboard') },
+    { title: 'Go to Tasks', hint: 'Ctrl+2', run: () => setView('tasks') },
+    { title: 'Go to Notes', hint: 'Ctrl+3', run: () => setView('notes') },
+    { title: 'Go to Focus', hint: 'Ctrl+4', run: () => setView('focus') },
+    { title: 'Go to Habits', hint: 'Ctrl+5', run: () => setView('habits') },
+    { title: 'Go to Bookmarks', hint: 'Ctrl+6', run: () => setView('bookmarks') },
+    { title: 'Go to Settings', hint: 'Ctrl+7', run: () => setView('settings') },
+    { title: state.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', hint: 'Toggle appearance', run: toggleTheme }
+  ];
+  openModal(`
+    <div class="form">
+      <div class="field">
+        <label>Search commands</label>
+        <input data-palette-search placeholder="Type to filter commands..." autofocus />
+      </div>
+      <div class="palette" data-palette-list>
+        ${commands.map((c, i) => `
+          <button data-command="${i}">
+            <span>
+              <strong>${escapeHtml(c.title)}</strong><br />
+              <span class="small">${escapeHtml(c.hint)}</span>
+            </span>
+            <span class="pill">Enter</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `);
+
+  const search = document.querySelector('[data-palette-search]');
+  const list = document.querySelector('[data-palette-list]');
+  const filter = () => {
+    const q = search.value.trim().toLowerCase();
+    list.querySelectorAll('[data-command]').forEach((btn, idx) => {
+      const command = commands[idx];
+      const show = !q || `${command.title} ${command.hint}`.toLowerCase().includes(q);
+      btn.style.display = show ? '' : 'none';
+      btn.onclick = () => { closeModal(); command.run(); };
+    });
+  };
+  search.addEventListener('input', filter);
+  filter();
+  setTimeout(() => search.focus(), 0);
+}
+
 function addTask(){
   const title = prompt('Task title?');
   if(!title) return;
@@ -865,12 +925,14 @@ function openModal(html){
   body.innerHTML = html;
   backdrop.classList.add('open');
   backdrop.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
 }
 
 function closeModal(){
   const backdrop = document.querySelector('#modal-backdrop');
   backdrop.classList.remove('open');
   backdrop.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
 }
 
 function copyText(text){
