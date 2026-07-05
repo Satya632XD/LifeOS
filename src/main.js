@@ -11,6 +11,9 @@ let undoStack = [];
 let activeNoteId = state.notes[0]?.id ?? null;
 let focusTimerHandle = null;
 let taskFilter = 'all';
+let calendarAnchor = new Date();
+calendarAnchor.setDate(1);
+let calendarSelected = dataUtils.today();
 
 const views = [
   { id: 'dashboard', label: 'Dashboard', icon: icons.dashboard },
@@ -19,6 +22,7 @@ const views = [
   { id: 'focus', label: 'Focus', icon: icons.timer },
   { id: 'habits', label: 'Habits', icon: icons.habits },
   { id: 'bookmarks', label: 'Bookmarks', icon: icons.bookmarks },
+  { id: 'calendar', label: 'Calendar', icon: icons.link },
   { id: 'settings', label: 'Settings', icon: icons.settings }
 ];
 
@@ -52,7 +56,7 @@ function bindGlobalShortcuts(){
       openCommandPalette();
       return;
     }
-    if(e.ctrlKey && /^[1-7]$/.test(e.key)){
+    if(e.ctrlKey && /^[1-8]$/.test(e.key)){
       e.preventDefault();
       setView(views[Number(e.key)-1].id);
     }
@@ -193,6 +197,11 @@ function renderMain(){
   `;
   else if(state.currentView === 'bookmarks') actions.innerHTML = `
     <button class="ghost-btn" data-act="new-bookmark">Import link</button>
+  `;
+  else if(state.currentView === 'calendar') actions.innerHTML = `
+    <button class="ghost-btn" data-cal-prev>Prev month</button>
+    <button class="ghost-btn" data-cal-today>Today</button>
+    <button class="ghost-btn" data-cal-next>Next month</button>
   `;
   else actions.innerHTML = `
     <button class="ghost-btn" data-act="reset-app">Reset demo data</button>
@@ -451,6 +460,10 @@ function bindViewEvents(root){
   root.querySelector('[data-reset-demo]')?.addEventListener('click', resetDemoData);
   root.querySelector('[data-new-bookmark]')?.addEventListener('click', addBookmark);
   root.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => { taskFilter = btn.dataset.filter; renderMain(); }));
+  root.querySelectorAll('[data-cal-day]').forEach(btn => btn.addEventListener('click', () => selectCalendarDay(btn.dataset.calDay)));
+  root.querySelector('[data-cal-prev]')?.addEventListener('click', () => shiftCalendar(-1));
+  root.querySelector('[data-cal-next]')?.addEventListener('click', () => shiftCalendar(1));
+  root.querySelector('[data-cal-today]')?.addEventListener('click', () => goToToday());
   root.querySelectorAll('[data-act]').forEach(btn => btn.addEventListener('click', () => handleAction({ currentTarget: btn })));
 }
 
@@ -581,7 +594,8 @@ function openCommandPalette(){
     { title: 'Go to Focus', hint: 'Ctrl+4', run: () => setView('focus') },
     { title: 'Go to Habits', hint: 'Ctrl+5', run: () => setView('habits') },
     { title: 'Go to Bookmarks', hint: 'Ctrl+6', run: () => setView('bookmarks') },
-    { title: 'Go to Settings', hint: 'Ctrl+7', run: () => setView('settings') },
+    { title: 'Go to Calendar', hint: 'Ctrl+7', run: () => setView('calendar') },
+    { title: 'Go to Settings', hint: 'Ctrl+8', run: () => setView('settings') },
     { title: state.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', hint: 'Toggle appearance', run: toggleTheme }
   ];
   openModal(`
@@ -949,6 +963,58 @@ function downloadBlob(blob, filename){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+
+function selectCalendarDay(date){
+  calendarSelected = date;
+  const d = new Date(date + 'T00:00:00');
+  calendarAnchor = new Date(d.getFullYear(), d.getMonth(), 1);
+  renderMain();
+}
+
+function shiftCalendar(months){
+  calendarAnchor = new Date(calendarAnchor.getFullYear(), calendarAnchor.getMonth() + months, 1);
+  calendarSelected = new Date(calendarAnchor).toISOString().slice(0,10);
+  renderMain();
+}
+
+function goToToday(){
+  const t = dataUtils.today();
+  const d = new Date(t + 'T00:00:00');
+  calendarSelected = t;
+  calendarAnchor = new Date(d.getFullYear(), d.getMonth(), 1);
+  renderMain();
+}
+
+function monthLabel(date){
+  return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+function calendarDays(anchor){
+  const year = anchor.getFullYear();
+  const month = anchor.getMonth();
+  const first = new Date(year, month, 1);
+  const start = new Date(first);
+  start.setDate(first.getDate() - first.getDay());
+  const out = [];
+  for(let i=0;i<42;i++){
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const iso = d.toISOString().slice(0,10);
+    out.push({
+      date: iso,
+      number: d.getDate(),
+      label: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()],
+      isOther: d.getMonth() !== month,
+      count: state.tasks.filter(t => t.due === iso).length
+    });
+  }
+  return out;
+}
+
+function tasksForDate(date){
+  return state.tasks.filter(t => t.due === date).sort((a,b) => Number(a.done)-Number(b.done) || b.createdAt - a.createdAt);
+}
+
 function titleFor(view){
   return {
     dashboard:'Your daily command center',
@@ -957,6 +1023,7 @@ function titleFor(view){
     focus:'Pomodoro focus',
     habits:'Habit tracker',
     bookmarks:'Bookmark vault',
+    calendar:'Calendar planner',
     settings:'Settings and backup'
   }[view];
 }
@@ -969,6 +1036,7 @@ function subtitleFor(view){
     focus:'Use a simple work/break loop that helps you stay locked in.',
     habits:'Track tiny daily wins and keep streaks visible.',
     bookmarks:'Save useful links instead of scattering them across tabs.',
+    calendar:'See your month, inspect due dates, and plan ahead.',
     settings:'Tune the theme, export backups, or reset the sample data.'
   }[view];
 }
